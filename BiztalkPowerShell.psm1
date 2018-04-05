@@ -5,20 +5,26 @@
     $Script:BiztalSQLComputerName = $BiztalSQLComputerName
 }
 
+function Get-BiztalkApplication {
+    param (
+        $ApplicationName = "Tervis.Integration"
+    )
+    [void] [System.reflection.Assembly]::LoadWithPartialName("Microsoft.BizTalk.ExplorerOM")
+    $Catalog = New-Object Microsoft.BizTalk.ExplorerOM.BtsCatalogExplorer
+    $Catalog.ConnectionString = "SERVER=$Script:BiztalSQLComputerName;DATABASE=BizTalkMgmtDb;Integrated Security=SSPI"
+    $Catalog.Applications[$ApplicationName]
+}
+
 function Export-BiztalkState {
     param (
         $BiztalkStatePath = "C:\Biztalk State", 
         [parameter(Mandatory = $true)][string]$Environment
     )
 
-    #Setup Biztalk objects neccessary to interaction with our application
-    [void] [System.reflection.Assembly]::LoadWithPartialName("Microsoft.BizTalk.ExplorerOM")
-    $Catalog = New-Object Microsoft.BizTalk.ExplorerOM.BtsCatalogExplorer
-    $Catalog.ConnectionString = "SERVER=$Script:BiztalSQLComputerName;DATABASE=BizTalkMgmtDb;Integrated Security=SSPI"
-    $TervisIntegration = $Catalog.Applications["Tervis.Integration"]
+    $TervisIntegration =  Get-BiztalkApplication -ApplicationName "Tervis.Integration"
 
     $TervisIntegration.SendPorts | 
-    select @{Name="HostName";Expression={$_.PrimaryTransport.SendHandler.name}}, name, status, @{Name="Address";Expression={$_.PrimaryTransport.Address}} | 
+    Select-Object @{Name="HostName";Expression={$_.PrimaryTransport.SendHandler.name}}, name, status, @{Name="Address";Expression={$_.PrimaryTransport.Address}} | 
     sort Hostname |
     Export-Csv -Path $BiztalkStatePath\SendPorts.csv -NoTypeInformation
 
@@ -41,11 +47,7 @@ function Compare-BiztalkState () {
         [switch]$IncludeEqual
     )
 
-    #Setup Biztalk objects neccessary to interaction with our application
-    [void] [System.reflection.Assembly]::LoadWithPartialName("Microsoft.BizTalk.ExplorerOM")
-    $Catalog = New-Object Microsoft.BizTalk.ExplorerOM.BtsCatalogExplorer
-    $Catalog.ConnectionString = "SERVER=$Script:BiztalSQLComputerName;DATABASE=BizTalkMgmtDb;Integrated Security=SSPI"
-    $TervisIntegration = $Catalog.Applications["Tervis.Integration"]
+    $TervisIntegration =  Get-BiztalkApplication -ApplicationName "Tervis.Integration"
 
     #Check Send Ports
     $Canonical = import-csv $BiztalkStatePath\SendPorts.csv
@@ -69,13 +71,8 @@ function Import-BiztalkState {
         $BiztalkStatePath = "C:\Biztalk State", 
         [parameter(Mandatory = $true)][string]$Environment
     )
+    $TervisIntegration =  Get-BiztalkApplication -ApplicationName "Tervis.Integration"    
 
-    #Setup Biztalk objects neccessary to interaction with our application
-    [void] [System.reflection.Assembly]::LoadWithPartialName("Microsoft.BizTalk.ExplorerOM")
-    $Catalog = New-Object Microsoft.BizTalk.ExplorerOM.BtsCatalogExplorer
-    $Catalog.ConnectionString = "SERVER=$Script:BiztalSQLComputerName;DATABASE=BizTalkMgmtDb;Integrated Security=SSPI"
-    $TervisIntegration = $Catalog.Applications["Tervis.Integration"]
-    
     #Set Send Ports state to match file
     $Canonical = import-csv $BiztalkStatePath\SendPorts.csv
     $Current = $TervisIntegration.SendPorts | select @{Name="HostName";Expression={$_.PrimaryTransport.SendHandler.name}}, name, status | sort HostName
