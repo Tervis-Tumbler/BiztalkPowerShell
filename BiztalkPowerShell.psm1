@@ -127,6 +127,6 @@ function Test-BiztalkState () {
 
     $ComparisonResults = Compare-BiztalkState -Environment $Environment -BiztalkStatePath $CorrectBiztalkStatePath
     if ($ComparisonResults) { 
-        Send-MailMessage -From $From -to $To -subject "Incorrect Biztalk State Detected" -SmtpServer $SMTPServer -Body ($ComparisonResults | FT -autosize | out-string -Width 200) 
+        Send-TervisMailMessage -From $From -to $To -subject "Incorrect Biztalk State Detected" -Body ($ComparisonResults | FT -autosize | out-string -Width 200) 
     }
 }
